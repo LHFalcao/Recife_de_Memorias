@@ -1,0 +1,7 @@
+self.audio_files = {
+    1: "audios/caisdosertao.wav",
+    2: "audios/marcozero.wav",
+    3: "audios/pacodofrevo.wav",
+    4: "audios/parquedasesculturas.wav",
+    5: "audios/ruadobomjesus.wav"
+}
