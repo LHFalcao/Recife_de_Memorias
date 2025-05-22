@@ -5,13 +5,12 @@
 O **Recife de Memórias** é um jogo sensorial que proporciona ao jogador uma jornada interativa pelos cinco principais pontos turísticos do bairro do Recife. A cada rodada:
 
 1. O Arduino Mega, com sete botões físicos (cinco de escolha, um de Start e um de Reset) e dois LEDs (verde/vermelho), aguarda o comando de início.
-2. Ao pressionar **Start**, o Arduino envia `INICIAR` à aplicação Python.
-3. O Python seleciona aleatoriamente um dos pontos turísticos — **Cais do Sertão**, **Marco Zero**, **Paço do Frevo**, **Parque das Esculturas** ou **Rua do Bom Jesus** — e reproduz o áudio correspondente.
-4. Após o áudio, o Python envia um número (1–5) ao Arduino, indicando qual botão o jogador deve pressionar.
-5. O Arduino aguarda até 15 segundos por uma resposta:
+2. Ao pressionar **Start**, o Arduino envia `START` à aplicação Python.
+3. O Arduino começa a tocar o audio seguindo uma ordem pré-definida dos respectivos pontos turísticos.
+4. Após o áudio, o usuário deve pressionar o botão relacionado ao ponto turístico correspondente.
+5. O Arduino aguarda por uma resposta:
    - **Acerto**: acende o LED verde e envia `CORRETO`.
    - **Erro**: acende o LED vermelho e envia `ERRADO`.
-   - **Sem resposta**: pisca os LEDs e envia `TEMPO_ESGOTADO`.
 6. Isso se repete por cinco rodadas. O botão **Reset** pode ser pressionado a qualquer momento para reiniciar o jogo.
 
 ---
@@ -26,14 +25,14 @@ O **Recife de Memórias** é um jogo sensorial que proporciona ao jogador uma jo
   - Laranja → pino 48
   - Rosa    → pino 44
   - Verde   → pino 40
-  - Azul    → pino 36
-  - Start   → pino 12
-  - Reset   → pino 11
+  - Azul    → pino 32
+  - Start   → pino 22
+  - Reset   → pino 24
 - **LEDs**:
   - Verde    → pino 9
   - Vermelho → pino 6
 
-> Os botões devem estar conectados entre o pino digital e o GND. Os LEDs devem ser ligados com resistores (~220Ω) entre o pino e o GND.
+> Os botões devem estar conectados entre o pino digital e o GND. Os LEDs devem ser ligados com resistores (~300Ω) entre o pino e o GND.
 
 ### 2.2 Software
 
@@ -55,164 +54,279 @@ O **Recife de Memórias** é um jogo sensorial que proporciona ao jogador uma jo
 ### 3.1 Setup
 
 ```cpp
+const int btnStart    = 22; 
+const int btnReset    = 24;
+
+const int btnAzul     = 40;
+const int btnRosa     = 48;
+const int btnLaranja  = 44;
+const int btnAmarelo  = 52;
+const int btnVerde    = 32;
+
+const int ledVerde    = 9;
+const int ledVermelha = 6;
+
+const char* audios[5] = {
+    "parquedasesculturas.wav", 
+    "marcozero.wav", 
+    "pacodofrevo.wav", 
+    "caisdosertao.wav", 
+    "ruadobomjesus.wav"
+};
+
+bool jogoAtivo = false;
+int faseAtual = 0;
+bool aguardandoResposta = false;
+
+unsigned long tempoUltimoPressionado[10] = {0};
+const int debounceDelay = 200; // Aumentado para 200ms para melhorar debounce
+
+// Guardamos o estado anterior de cada botão para debounce
+bool estadoAnterior[10] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
+
+bool botaoPressionado(int pino, int indice) {
+    bool estadoAtual = digitalRead(pino);
+
+    if (estadoAtual == LOW && estadoAnterior[indice] == HIGH && (millis() - tempoUltimoPressionado[indice] > debounceDelay)) {
+        tempoUltimoPressionado[indice] = millis();
+        estadoAnterior[indice] = LOW;
+        return true;
+    } else if (estadoAtual == HIGH) {
+        estadoAnterior[indice] = HIGH;
+    }
+    return false;
+}
+
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);
-  
-  pinMode(btnAmarelo, INPUT_PULLUP);
-  pinMode(btnLaranja, INPUT_PULLUP);
-  pinMode(btnRosa, INPUT_PULLUP);
-  pinMode(btnVerde, INPUT_PULLUP);
-  pinMode(btnAzul, INPUT_PULLUP);
-  pinMode(btnStart, INPUT_PULLUP);
-  pinMode(btnReset, INPUT_PULLUP);
+    Serial.begin(9600);
 
-  pinMode(ledVerde, OUTPUT);
-  pinMode(ledVermelho, OUTPUT);
-  digitalWrite(ledVerde, LOW);
-  digitalWrite(ledVermelho, LOW);
+    pinMode(btnStart, INPUT_PULLUP);
+    pinMode(btnReset, INPUT_PULLUP);
+    pinMode(btnAzul, INPUT_PULLUP);
+    pinMode(btnRosa, INPUT_PULLUP);
+    pinMode(btnLaranja, INPUT_PULLUP);
+    pinMode(btnAmarelo, INPUT_PULLUP);
+    pinMode(btnVerde, INPUT_PULLUP);
 
-  Serial.println("ARDUINO_INICIADO");
+    pinMode(ledVerde, OUTPUT);
+    pinMode(ledVermelha, OUTPUT);
+    
+    digitalWrite(ledVerde, LOW);
+    digitalWrite(ledVermelha, LOW);
 }
-````
 
----
+unsigned long timerInicio = 0;
+const unsigned long delayAcerto = 3000;
+const unsigned long delayErro = 3000;
+const unsigned long delayEntreFases = 1000;
 
-### 3.2 Funções Críticas
+enum EstadoJogo {
+    ESPERANDO_APERTO,
+    PROCESSANDO_ACERTO,
+    PROCESSANDO_ERRO,
+    ESPERANDO_ENTRE_FASES,
+    REPETIR_SEQUENCIA_FINAL
+};
 
-#### `getPressedButton()`
+EstadoJogo estado = ESPERANDO_APERTO;
 
-```cpp
-int getPressedButton() {
-  if (digitalRead(btnAmarelo) == LOW) { delay(50); if (digitalRead(btnAmarelo) == LOW) return 1; }
-  if (digitalRead(btnLaranja) == LOW) { delay(50); if (digitalRead(btnLaranja) == LOW) return 2; }
-  if (digitalRead(btnRosa) == LOW) { delay(50); if (digitalRead(btnRosa) == LOW) return 3; }
-  if (digitalRead(btnVerde) == LOW) { delay(50); if (digitalRead(btnVerde) == LOW) return 4; }
-  if (digitalRead(btnAzul) == LOW) { delay(50); if (digitalRead(btnAzul) == LOW) return 5; }
-  return -1;
-}
-```
+const int botoesCorretos[5] = {btnAzul, btnRosa, btnLaranja, btnAmarelo, btnVerde};
+const int botoesIndices[5] = {0, 1, 2, 3, 4};
 
-#### `checkStartButton()`
+// Variaveis para repetição final
+int repeticaoIndex = 0;
 
-```cpp
-void checkStartButton() {
-  if (currentState == WAITING && digitalRead(btnStart) == LOW) {
-    delay(50);
-    if (digitalRead(btnStart) == LOW) {
-      Serial.println("INICIAR");
-      currentState = PLAYING;
-    }
-  }
-}
-```
-
-#### `checkResetButton()`
-
-```cpp
-void checkResetButton() {
-  if (digitalRead(btnReset) == LOW) {
-    delay(50);
-    if (digitalRead(btnReset) == LOW) {
-      Serial.println("RESET");
-      currentState = WAITING;
-    }
-  }
-}
-```
-
-#### `processGame()`
-
-```cpp
-void processGame() {
-  if (Serial.available()) {
-    String message = Serial.readStringUntil('\n');
-    int expectedButton = message.toInt();
-
-    Serial.print("Recebido: ");
-    Serial.println(expectedButton);
-    Serial.print("Esperando botão (esperado ");
-    Serial.print(expectedButton);
-    Serial.println(")...");
-
-    unsigned long startTime = millis();
-    int pressedButton = -1;
-
-    while ((millis() - startTime < 15000) && pressedButton == -1) {
-      pressedButton = getPressedButton();
-
-      if (pressedButton != -1) {
-        Serial.print("Botao detectado: ");
-        Serial.println(pressedButton);
-        bool acerto = (pressedButton == expectedButton);
-        digitalWrite(acerto ? ledVerde : ledVermelho, HIGH);
-        Serial.println(acerto ? "CORRETO" : "ERRADO");
-        delay(2000);
-        digitalWrite(ledVerde, LOW);
-        digitalWrite(ledVermelho, LOW);
-        return;
-      }
-
-      if (digitalRead(btnReset) == LOW) {
-        Serial.println("RESET");
-        currentState = WAITING;
-        return;
-      }
-
-      blinkLeds();
-    }
-
-    Serial.println("TEMPO_ESGOTADO");
-  }
-}
-```
-
----
-
-### 3.3 Loop Principal
-
-```cpp
 void loop() {
-  checkStartButton();
-  checkResetButton();
-  if (currentState == PLAYING) {
-    processGame();
-  }
-  delay(10);
+    if (botaoPressionado(btnReset, 5)) {
+        jogoAtivo = false;
+        faseAtual = 0;
+        aguardandoResposta = false;
+        estado = ESPERANDO_APERTO;
+        repeticaoIndex = 0;
+        Serial.println("RESET");
+        digitalWrite(ledVerde, LOW);
+        digitalWrite(ledVermelha, LOW);
+    }
+
+    if (!jogoAtivo && botaoPressionado(btnStart, 0)) {
+        jogoAtivo = true;
+        faseAtual = 0;
+        aguardandoResposta = true;
+        estado = ESPERANDO_APERTO;
+        repeticaoIndex = 0;
+        Serial.println("START");
+        delay(1000);
+        Serial.println(audios[faseAtual]);
+    }
+
+    if (jogoAtivo && aguardandoResposta) {
+        if (estado == ESPERANDO_APERTO) {
+
+            if (estado == REPETIR_SEQUENCIA_FINAL) {
+                // Isso nunca ocorre aqui (condição de segurança)
+            }
+
+            if (estado != REPETIR_SEQUENCIA_FINAL) {
+                // Jogo normal, avançando fases
+                if (faseAtual < 5) {
+                    // Verifica botão correto atual
+                    if (botaoPressionado(botoesCorretos[faseAtual], botoesIndices[faseAtual])) {
+                        estado = PROCESSANDO_ACERTO;
+                        timerInicio = millis();
+                        aguardandoResposta = false;
+
+                        digitalWrite(ledVerde, HIGH);
+                        digitalWrite(ledVermelha, LOW);
+                        Serial.println("Acerto!");
+                    }
+                    // Botão errado
+                    else if (
+                        (botaoPressionado(btnAzul, 0) && botoesCorretos[faseAtual] != btnAzul) ||
+                        (botaoPressionado(btnRosa, 1) && botoesCorretos[faseAtual] != btnRosa) ||
+                        (botaoPressionado(btnLaranja, 2) && botoesCorretos[faseAtual] != btnLaranja) ||
+                        (botaoPressionado(btnAmarelo, 3) && botoesCorretos[faseAtual] != btnAmarelo) ||
+                        (botaoPressionado(btnVerde, 4) && botoesCorretos[faseAtual] != btnVerde)
+                    ) {
+                        estado = PROCESSANDO_ERRO;
+                        timerInicio = millis();
+
+                        digitalWrite(ledVerde, LOW);
+                        digitalWrite(ledVermelha, HIGH);
+                        Serial.println("ERRO - Repetindo áudio...");
+                        if (faseAtual < 5) {
+                            Serial.println(audios[faseAtual]);
+                        }
+                        aguardandoResposta = false;
+                    }
+                }
+            }
+        }
+        else if (estado == REPETIR_SEQUENCIA_FINAL) {
+            // Sequencia final, usuário deve repetir toda sequência
+
+            // Captura qual botão foi pressionado, considerando a ordem esperada (botoesCorretos[repeticaoIndex])
+
+            // Verifica se botão correto na repetição
+            if (botaoPressionado(botoesCorretos[repeticaoIndex], botoesIndices[repeticaoIndex])) {
+                repeticaoIndex++;
+                digitalWrite(ledVerde, HIGH);
+                digitalWrite(ledVermelha, LOW);
+                Serial.print("Botao correto na sequencia final: ");
+                Serial.println(repeticaoIndex);
+
+                delay(200); // pequeno delay para o usuário notar
+
+                digitalWrite(ledVerde, LOW);
+
+                // Se terminou toda a sequência correta
+                if (repeticaoIndex >= 5) {
+                    Serial.println("PARABÉNS! Você ganhou o jogo.");
+                    jogoAtivo = false;
+                    aguardandoResposta = false;
+                    estado = ESPERANDO_APERTO;
+                    repeticaoIndex = 0;
+                }
+            }
+            // Se outro botão foi pressionado (que não é o correto da sequência no índice)
+            else if (
+                (botaoPressionado(btnAzul, 0) && botoesCorretos[repeticaoIndex] != btnAzul) ||
+                (botaoPressionado(btnRosa, 1) && botoesCorretos[repeticaoIndex] != btnRosa) ||
+                (botaoPressionado(btnLaranja, 2) && botoesCorretos[repeticaoIndex] != btnLaranja) ||
+                (botaoPressionado(btnAmarelo, 3) && botoesCorretos[repeticaoIndex] != btnAmarelo) ||
+                (botaoPressionado(btnVerde, 4) && botoesCorretos[repeticaoIndex] != btnVerde)
+            ) {
+                digitalWrite(ledVerde, LOW);
+                digitalWrite(ledVermelha, HIGH);
+                Serial.println("ERRO na repetição da sequência final - Repita novamente!");
+                delay(3000);
+                digitalWrite(ledVermelha, LOW);
+                repeticaoIndex = 0;
+            }
+        }
+    }
+
+    // Estado para aguardar o delay após acerto
+    if (estado == PROCESSANDO_ACERTO) {
+        if (millis() - timerInicio >= delayAcerto) {
+            digitalWrite(ledVerde, LOW);
+            faseAtual++;
+            if (faseAtual >= 5) {
+                // Chegou ao fim das fases, começa a repetição final
+                Serial.println("Sequência final! Repita os botões na ordem.");
+
+                estado = REPETIR_SEQUENCIA_FINAL;
+                repeticaoIndex = 0;
+                aguardandoResposta = true;
+            } else {
+                estado = ESPERANDO_ENTRE_FASES;
+                timerInicio = millis();
+            }
+        }
+    }
+
+    // Estado para aguardar o delay após erro
+    if (estado == PROCESSANDO_ERRO) {
+        if (millis() - timerInicio >= delayErro) {
+            digitalWrite(ledVermelha, LOW);
+            estado = ESPERANDO_APERTO;
+            aguardandoResposta = true;
+        }
+    }
+
+    // Estado para aguardar um pequeno delay antes de mostrar o próximo áudio
+    if (estado == ESPERANDO_ENTRE_FASES) {
+        if (millis() - timerInicio >= delayEntreFases) {
+            if (faseAtual < 5) {
+                Serial.println(audios[faseAtual]);
+            }
+            aguardandoResposta = true;
+            estado = ESPERANDO_APERTO;
+        }
+    }
 }
+
+
 ```
 
 ---
 
 ## 4. Software Python
 
-### 4.1 Estrutura da Classe `AudioGame`
-
-* `__init__()` – define os arquivos de áudio e chama `setup_audio_files()`.
-* `setup_audio_files()` – verifica se os arquivos `.wav` existem.
-* `connect_arduino()` – busca portas seriais, conecta a 9600 baud.
-* `play_audio()` – toca o áudio com `pygame`, e monitora o canal para `RESET`.
-* `game_loop()` – executa as 5 rodadas do jogo.
-* `run()` – fluxo principal: conecta, espera `"INICIAR"`, executa o jogo, reinicia se necessário.
-
-### 4.2 Fluxo de Execução
 ```
-Python inicia → connect_arduino() → aguarda "ARDUINO_INICIADO"
-Botão Start → Arduino → "INICIAR" → Python inicia game_loop()
-Para cada rodada:
-  Python limpa buffer, envia número, toca áudio
-  Arduino processa e envia "CORRETO", "ERRADO" ou "TEMPO_ESGOTADO"
-  Python registra resposta e avança
-Após 5 rodadas → Python envia "RESET"
-Arduino retorna a WAITING
+import serial
+import time
+import pygame
+import os
+
+pygame.init()
+arduino = serial.Serial('COM11', 9600, timeout=1)
+time.sleep(2)  # Tempo para estabilizar a comunicação
+
+while True:
+    comando = arduino.readline().decode().strip()
+    
+    if comando:
+        print("Comando recebido:", comando)
+
+        if comando == "RESET":
+            print("Jogo reiniciado! Aguardando START...")
+        elif comando == "START":
+            print("Jogo iniciado!")
+        elif comando == "FIM_DO_JOGO":
+            print("Parabéns! Você completou o desafio!")
+        elif os.path.exists(comando):  # Verifica se o arquivo existe
+            pygame.mixer.music.load(comando)
+            pygame.mixer.music.play()
+            
+            while pygame.mixer.music.get_busy():  # Espera o áudio terminar antes de seguir
+               time.sleep(0.1)
 ```
 
 ---
 
 ## 5. Notas de Depuração e Boas Práticas
 
-* **Debounce**: `delay(50)` suficiente para eliminar múltiplas leituras.
-* **Buffer serial**: sempre limpe com `reset_input_buffer()` antes de enviar comandos.
+* **Debounce**: `delay(200)` suficiente para eliminar múltiplas leituras.
 * **Mensagens seriais**: use `Serial.println()` no Arduino e `readline().decode().strip()` no Python para consistência.
 * **Permissões**: no Linux, adicione o usuário ao grupo `dialout`.
 * **Logs**: verifique tanto o console do Python quanto o Monitor Serial do Arduino para depuração.
