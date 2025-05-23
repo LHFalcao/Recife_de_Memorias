@@ -21,7 +21,7 @@ Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” 
   - `pygame`
 - 8 arquivos `.wav` 
   - 5 áudios dos pontos turísticos
-  - 1 áudio para a introdução do jogo
+  - 1 áudio para introduzir do jogo
   - 1 áudio para explicar ao usuário a próxima fase do jogo
   - 1 áudio para finalizar o jogo
 
