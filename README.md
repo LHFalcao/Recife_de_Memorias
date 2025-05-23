@@ -89,7 +89,7 @@ projeto-recife/
 
 ## Créditos
 
-Desenvolvido por Ana Lahalle, Davi Marcelo Pedrosa, Gabrielle Vital, Gustavo Torres, Matheus Cavalcanti, Marina Cabral, Luiz Henrique Falcão, João Guilherme Barros, João Pedro Pessoa e Yasmin Correia.
+Desenvolvido por Ana Lahalle, Davi Marcelo Pedrosa, Gabrielle Vital, Gustavo Castro, Matheus Cavalcanti, Marina Cabral, Luiz Henrique Falcão, João Guilherme Barros, João Pedro Pessoa e Yasmin Correia.
 
 Projeto acadêmico interdisciplinar — tecnologia, memória e cultura.
 
