@@ -12,7 +12,7 @@ Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” 
   - 1 botão de início (Start)
   - 1 botão de reinício (Reset)
 - 2 LEDs (verde e vermelho)
-- Resistores (~220Ω)
+- Resistores (~300Ω)
 
 ### Software
 - Python 3.x
