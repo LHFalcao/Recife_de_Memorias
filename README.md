@@ -64,7 +64,7 @@ Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” 
 4. Escute o áudio.
 5. Pressione o botão correspondente ao ponto turístico.
 6. O LED indicará se você acertou ou errou.
-7. Após 5 rodadas, o jogo reinicia. Você também pode apertar o botão **Reset** a qualquer momento.
+7. Após 5 rodadas, o jogo pede que você repita a sequência dos botões pressionados, acertando, o jogo reinicia. Você também pode apertar o botão **Reset** a qualquer momento.
 
 ---
 
