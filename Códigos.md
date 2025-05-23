@@ -1,3 +1,4 @@
+# SOFTWARE ARDUÍNO
 ```
 
 const int btnStart    = 22; 
@@ -230,4 +231,34 @@ void loop() {
         }
     }
 }
+```
+# SOFTWARE PYTHON
+```
+import serial
+import time
+import pygame
+import os
+
+pygame.init()
+arduino = serial.Serial('COM11', 9600, timeout=1)
+time.sleep(2)  # Tempo para estabilizar a comunicação
+
+while True:
+    comando = arduino.readline().decode().strip()
+    
+    if comando:
+        print("Comando recebido:", comando)
+
+        if comando == "RESET":
+            print("Jogo reiniciado! Aguardando START...")
+        elif comando == "START":
+            print("Jogo iniciado!")
+        elif comando == "FIM_DO_JOGO":
+            print("Parabéns! Você completou o desafio!")
+        elif os.path.exists(comando):  # Verifica se o arquivo existe
+            pygame.mixer.music.load(comando)
+            pygame.mixer.music.play()
+            
+            while pygame.mixer.music.get_busy():  # Espera o áudio terminar antes de seguir
+               time.sleep(0.1)
 ```
