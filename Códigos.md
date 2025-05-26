@@ -1,5 +1,5 @@
 # SOFTWARE ARDUÍNO
-```
+```cpp
 
 const int btnStart    = 22; 
 const int btnReset    = 24;
