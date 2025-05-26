@@ -233,7 +233,7 @@ void loop() {
 }
 ```
 # SOFTWARE PYTHON
-```
+```python
 import serial
 import time
 import pygame
