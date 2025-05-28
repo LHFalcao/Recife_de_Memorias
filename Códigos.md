@@ -6,19 +6,22 @@ const int btnReset    = 24;
 
 const int btnAzul     = 40;
 const int btnRosa     = 48;
-const int btnLaranja  = 44;
+const int btnLaranja  = 42;
 const int btnAmarelo  = 52;
-const int btnVerde    = 32;
+const int btnVerde    = 36;
 
 const int ledVerde    = 9;
 const int ledVermelha = 6;
 
-const char* audios[5] = {
+const char* audios[8] = {
     "parquedasesculturas.wav", 
     "marcozero.wav", 
     "pacodofrevo.wav", 
     "caisdosertao.wav", 
-    "ruadobomjesus.wav"
+    "ruadobomjesus.wav",
+    "inicio_jogo.wav",  
+    "preparar_repeticao.wav",  
+    "vitoria.wav"      
 };
 
 bool jogoAtivo = false;
@@ -26,7 +29,7 @@ int faseAtual = 0;
 bool aguardandoResposta = false;
 
 unsigned long tempoUltimoPressionado[10] = {0};
-const int debounceDelay = 200; // Aumentado para 200ms para melhorar debounce
+const int debounceDelay = 150; 
 
 // Guardamos o estado anterior de cada botão para debounce
 bool estadoAnterior[10] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
@@ -103,6 +106,8 @@ void loop() {
         repeticaoIndex = 0;
         Serial.println("START");
         delay(1000);
+        Serial.println(audios[5]);  // Envia áudio de início de jogo: inicio_jogo.wav
+        delay(1000);
         Serial.println(audios[faseAtual]);
     }
 
@@ -151,8 +156,6 @@ void loop() {
         else if (estado == REPETIR_SEQUENCIA_FINAL) {
             // Sequencia final, usuário deve repetir toda sequência
 
-            // Captura qual botão foi pressionado, considerando a ordem esperada (botoesCorretos[repeticaoIndex])
-
             // Verifica se botão correto na repetição
             if (botaoPressionado(botoesCorretos[repeticaoIndex], botoesIndices[repeticaoIndex])) {
                 repeticaoIndex++;
@@ -161,13 +164,15 @@ void loop() {
                 Serial.print("Botao correto na sequencia final: ");
                 Serial.println(repeticaoIndex);
 
-                delay(200); // pequeno delay para o usuário notar
+                delay(1000); // delay alterado para 1 segundo para acerto
 
                 digitalWrite(ledVerde, LOW);
 
                 // Se terminou toda a sequência correta
                 if (repeticaoIndex >= 5) {
                     Serial.println("PARABÉNS! Você ganhou o jogo.");
+                    Serial.println(audios[7]);  // Envia áudio de vitória
+                    
                     jogoAtivo = false;
                     aguardandoResposta = false;
                     estado = ESPERANDO_APERTO;
@@ -185,7 +190,7 @@ void loop() {
                 digitalWrite(ledVerde, LOW);
                 digitalWrite(ledVermelha, HIGH);
                 Serial.println("ERRO na repetição da sequência final - Repita novamente!");
-                delay(3000);
+                delay(1000); // delay alterado para 1 segundo para erro
                 digitalWrite(ledVermelha, LOW);
                 repeticaoIndex = 0;
             }
@@ -200,6 +205,7 @@ void loop() {
             if (faseAtual >= 5) {
                 // Chegou ao fim das fases, começa a repetição final
                 Serial.println("Sequência final! Repita os botões na ordem.");
+                Serial.println(audios[6]);  // Envia áudio para preparar repetição final
 
                 estado = REPETIR_SEQUENCIA_FINAL;
                 repeticaoIndex = 0;
