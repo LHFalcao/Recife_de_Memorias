@@ -16,12 +16,12 @@ const int ledVermelha = 6;
 const char* audios[8] = {
     "parquedasesculturas.wav", 
     "marcozero.wav", 
-    "pacodofrevo.wav", 
+    "ForteDasCincoPontas.wav", 
     "caisdosertao.wav", 
     "ruadobomjesus.wav",
-    "inicio_jogo.wav",  
-    "preparar_repeticao.wav",  
-    "vitoria.wav"      
+    "introducaojogo-VEED-aprimorado-v2.wav",
+    "sequenciafinal-VEED-aprimorado-v2.wav", 
+    "vitoria-VEED-aprimorado-v2.wav" 
 };
 
 bool jogoAtivo = false;
@@ -29,10 +29,22 @@ int faseAtual = 0;
 bool aguardandoResposta = false;
 
 unsigned long tempoUltimoPressionado[10] = {0};
-const int debounceDelay = 150; 
+const int debounceDelay = 200; // Aumentado para 200ms para melhorar debounce
 
 // Guardamos o estado anterior de cada botão para debounce
 bool estadoAnterior[10] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
+// Array para a ordem aleatória das fases
+int ordemFases[5] = {0,1,2,3,4};
+
+// Função para embaralhar a ordem das fases
+void embaralharOrdem() {
+    for (int i = 4; i > 0; i--) {
+        int j = random(0, i + 1);
+        int temp = ordemFases[i];
+        ordemFases[i] = ordemFases[j];
+        ordemFases[j] = temp;
+    }
+}
 
 bool botaoPressionado(int pino, int indice) {
     bool estadoAtual = digitalRead(pino);
@@ -63,6 +75,8 @@ void setup() {
     
     digitalWrite(ledVerde, LOW);
     digitalWrite(ledVermelha, LOW);
+
+    randomSeed(analogRead(0)); // Inicializa o gerador de números aleatórios
 }
 
 unsigned long timerInicio = 0;
@@ -80,6 +94,7 @@ enum EstadoJogo {
 
 EstadoJogo estado = ESPERANDO_APERTO;
 
+// Array original dos botões, a ordem aleatória será usada para acessar esses
 const int botoesCorretos[5] = {btnAzul, btnRosa, btnLaranja, btnAmarelo, btnVerde};
 const int botoesIndices[5] = {0, 1, 2, 3, 4};
 
@@ -104,11 +119,12 @@ void loop() {
         aguardandoResposta = true;
         estado = ESPERANDO_APERTO;
         repeticaoIndex = 0;
+        embaralharOrdem(); // Embaralha a ordem das fases no início
         Serial.println("START");
         delay(1000);
         Serial.println(audios[5]);  // Envia áudio de início de jogo: inicio_jogo.wav
         delay(1000);
-        Serial.println(audios[faseAtual]);
+        Serial.println(audios[ordemFases[faseAtual]]);
     }
 
     if (jogoAtivo && aguardandoResposta) {
@@ -119,10 +135,10 @@ void loop() {
             }
 
             if (estado != REPETIR_SEQUENCIA_FINAL) {
-                // Jogo normal, avançando fases
                 if (faseAtual < 5) {
-                    // Verifica botão correto atual
-                    if (botaoPressionado(botoesCorretos[faseAtual], botoesIndices[faseAtual])) {
+                    int indiceFaseAtual = ordemFases[faseAtual];
+                    // Verifica botão correto atual pela ordem aleatória
+                    if (botaoPressionado(botoesCorretos[indiceFaseAtual], botoesIndices[indiceFaseAtual])) {
                         estado = PROCESSANDO_ACERTO;
                         timerInicio = millis();
                         aguardandoResposta = false;
@@ -131,13 +147,12 @@ void loop() {
                         digitalWrite(ledVermelha, LOW);
                         Serial.println("Acerto!");
                     }
-                    // Botão errado
                     else if (
-                        (botaoPressionado(btnAzul, 0) && botoesCorretos[faseAtual] != btnAzul) ||
-                        (botaoPressionado(btnRosa, 1) && botoesCorretos[faseAtual] != btnRosa) ||
-                        (botaoPressionado(btnLaranja, 2) && botoesCorretos[faseAtual] != btnLaranja) ||
-                        (botaoPressionado(btnAmarelo, 3) && botoesCorretos[faseAtual] != btnAmarelo) ||
-                        (botaoPressionado(btnVerde, 4) && botoesCorretos[faseAtual] != btnVerde)
+                        (botaoPressionado(btnAzul, 0) && botoesCorretos[indiceFaseAtual] != btnAzul) ||
+                        (botaoPressionado(btnRosa, 1) && botoesCorretos[indiceFaseAtual] != btnRosa) ||
+                        (botaoPressionado(btnLaranja, 2) && botoesCorretos[indiceFaseAtual] != btnLaranja) ||
+                        (botaoPressionado(btnAmarelo, 3) && botoesCorretos[indiceFaseAtual] != btnAmarelo) ||
+                        (botaoPressionado(btnVerde, 4) && botoesCorretos[indiceFaseAtual] != btnVerde)
                     ) {
                         estado = PROCESSANDO_ERRO;
                         timerInicio = millis();
@@ -146,7 +161,7 @@ void loop() {
                         digitalWrite(ledVermelha, HIGH);
                         Serial.println("ERRO - Repetindo áudio...");
                         if (faseAtual < 5) {
-                            Serial.println(audios[faseAtual]);
+                            Serial.println(audios[ordemFases[faseAtual]]);
                         }
                         aguardandoResposta = false;
                     }
@@ -154,10 +169,9 @@ void loop() {
             }
         }
         else if (estado == REPETIR_SEQUENCIA_FINAL) {
+            int indiceRepeticao = ordemFases[repeticaoIndex];
             // Sequencia final, usuário deve repetir toda sequência
-
-            // Verifica se botão correto na repetição
-            if (botaoPressionado(botoesCorretos[repeticaoIndex], botoesIndices[repeticaoIndex])) {
+            if (botaoPressionado(botoesCorretos[indiceRepeticao], botoesIndices[indiceRepeticao])) {
                 repeticaoIndex++;
                 digitalWrite(ledVerde, HIGH);
                 digitalWrite(ledVermelha, LOW);
@@ -168,7 +182,6 @@ void loop() {
 
                 digitalWrite(ledVerde, LOW);
 
-                // Se terminou toda a sequência correta
                 if (repeticaoIndex >= 5) {
                     Serial.println("PARABÉNS! Você ganhou o jogo.");
                     Serial.println(audios[7]);  // Envia áudio de vitória
@@ -179,34 +192,30 @@ void loop() {
                     repeticaoIndex = 0;
                 }
             }
-            // Se outro botão foi pressionado (que não é o correto da sequência no índice)
             else if (
-                (botaoPressionado(btnAzul, 0) && botoesCorretos[repeticaoIndex] != btnAzul) ||
-                (botaoPressionado(btnRosa, 1) && botoesCorretos[repeticaoIndex] != btnRosa) ||
-                (botaoPressionado(btnLaranja, 2) && botoesCorretos[repeticaoIndex] != btnLaranja) ||
-                (botaoPressionado(btnAmarelo, 3) && botoesCorretos[repeticaoIndex] != btnAmarelo) ||
-                (botaoPressionado(btnVerde, 4) && botoesCorretos[repeticaoIndex] != btnVerde)
+                (botaoPressionado(btnAzul, 0) && botoesCorretos[indiceRepeticao] != btnAzul) ||
+                (botaoPressionado(btnRosa, 1) && botoesCorretos[indiceRepeticao] != btnRosa) ||
+                (botaoPressionado(btnLaranja, 2) && botoesCorretos[indiceRepeticao] != btnLaranja) ||
+                (botaoPressionado(btnAmarelo, 3) && botoesCorretos[indiceRepeticao] != btnAmarelo) ||
+                (botaoPressionado(btnVerde, 4) && botoesCorretos[indiceRepeticao] != btnVerde)
             ) {
                 digitalWrite(ledVerde, LOW);
                 digitalWrite(ledVermelha, HIGH);
                 Serial.println("ERRO na repetição da sequência final - Repita novamente!");
-                delay(1000); // delay alterado para 1 segundo para erro
+                delay(1000);
                 digitalWrite(ledVermelha, LOW);
                 repeticaoIndex = 0;
             }
         }
     }
 
-    // Estado para aguardar o delay após acerto
     if (estado == PROCESSANDO_ACERTO) {
         if (millis() - timerInicio >= delayAcerto) {
             digitalWrite(ledVerde, LOW);
             faseAtual++;
             if (faseAtual >= 5) {
-                // Chegou ao fim das fases, começa a repetição final
                 Serial.println("Sequência final! Repita os botões na ordem.");
-                Serial.println(audios[6]);  // Envia áudio para preparar repetição final
-
+                Serial.println(audios[6]);
                 estado = REPETIR_SEQUENCIA_FINAL;
                 repeticaoIndex = 0;
                 aguardandoResposta = true;
@@ -217,7 +226,6 @@ void loop() {
         }
     }
 
-    // Estado para aguardar o delay após erro
     if (estado == PROCESSANDO_ERRO) {
         if (millis() - timerInicio >= delayErro) {
             digitalWrite(ledVermelha, LOW);
@@ -226,17 +234,17 @@ void loop() {
         }
     }
 
-    // Estado para aguardar um pequeno delay antes de mostrar o próximo áudio
     if (estado == ESPERANDO_ENTRE_FASES) {
         if (millis() - timerInicio >= delayEntreFases) {
             if (faseAtual < 5) {
-                Serial.println(audios[faseAtual]);
+                Serial.println(audios[ordemFases[faseAtual]]);
             }
             aguardandoResposta = true;
             estado = ESPERANDO_APERTO;
         }
     }
 }
+
 ```
 # SOFTWARE PYTHON
 ```python
