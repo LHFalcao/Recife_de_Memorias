@@ -1,6 +1,6 @@
 # Recife de Memórias
 
-Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” interativa pelos cinco principais pontos turísticos do bairro do Recife Antigo. A cada rodada, o sistema reproduz um trecho de áudio que evoca um local histórico (Cais do Sertão, Marco Zero, Forte do Brum, Parque das Esculturas e Rua do Bom Jesus). Após ouvir o som, o participante deve pressionar o botão cuja cor corresponde ao ponto turístico representado. Se acertar, um LED verde acende; se errar, acende o vermelho. O jogo termina quando todos os cinco locais são identificados corretamente e o jogador repete a sequência dos botões pressionados, completando esse percurso cultural que estimula a memória afetiva e o conhecimento sobre a paisagem recifense.
+Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” interativa pelos cinco principais pontos turísticos do bairro do Recife Antigo. A cada rodada, o sistema reproduz um trecho de áudio que evoca um local histórico (Cais do Sertão, Marco Zero, Forte das Cinco Pontas, Parque das Esculturas e Rua do Bom Jesus). Após ouvir o som, o participante deve pressionar o botão cuja cor corresponde ao ponto turístico representado. Se acertar, um LED verde acende; se errar, acende o vermelho. O jogo termina quando todos os cinco locais são identificados corretamente e o jogador repete a sequência dos botões pressionados, completando esse percurso cultural que estimula a memória afetiva e o conhecimento sobre a paisagem recifense.
 
 ---
 ## Requisitos
@@ -46,7 +46,7 @@ Recife de Memórias é um jogo sensorial em que o jogador vive uma “viagem” 
 
    * `caisdosertao.wav`
    * `marcozero.wav`
-   * `fortedobrum.wav`
+   * `ForteDasCincoPontas.wav`
    * `parquedasesculturas.wav`
    * `ruadobomjesus.wav`
 
@@ -79,7 +79,7 @@ projeto-recife/
 ├── audios/
 │   ├── caisdosertao.wav
 │   ├── marcozero.wav
-│   ├── fortedobrum.wav
+│   ├── ForteDasCincoPontas.wav
 │   ├── parquedasesculturas.wav
 │   └── ruadobomjesus.wav
 └── README.md
