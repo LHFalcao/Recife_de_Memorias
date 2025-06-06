@@ -16,7 +16,7 @@ const int ledVermelha = 6;
 const char* audios[8] = {
     "parquedasesculturas.wav", 
     "marcozero.wav", 
-    "ForteDasCincoPontas.wav", 
+    "ForteDoBrum.wav", 
     "caisdosertao.wav", 
     "ruadobomjesus.wav",
     "introducaojogo-VEED-aprimorado-v2.wav",
