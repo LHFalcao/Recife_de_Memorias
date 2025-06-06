@@ -254,7 +254,8 @@ import pygame
 import os
 
 pygame.init()
-arduino = serial.Serial('COM11', 9600, timeout=1) #A porta COM muda de número de aparelho para aparelho, então, para garantir o funcionamento, confira a do seu aparelho e altere no dódigo
+arduino = serial.Serial('COM11', 9600, timeout=1) #A porta COM muda de número de aparelho para aparelho, então, para garantir o funcionamento, confira a
+ do seu aparelho e altere no código
 time.sleep(2)  # Tempo para estabilizar a comunicação
 
 while True:
